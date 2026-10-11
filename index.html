@@ -856,7 +856,10 @@ $('btnBackup').onclick = () => {
     <p class="placeholder">모든 학기 기록을 파일로 저장하거나, 저장해 둔 파일을 다시 불러올 수 있어요. 같은 이름의 학기는 파일 내용으로 덮어써요.</p>
     <div class="actions" style="flex-direction:column;align-items:stretch;gap:8px">
       <button class="btn primary" id="bkExport">파일로 내보내기</button>
+      <button class="btn ghost" id="bkCopy">내용 복사하기</button>
       <button class="btn ghost" id="bkImport">파일 불러오기</button>
+      <textarea id="bkPaste" placeholder="백업 내용을 여기에 붙여넣기" style="height:90px;border-radius:10px;border:0;background:var(--fill);padding:10px 12px;font-size:13px;width:100%;resize:none"></textarea>
+      <button class="btn ghost" id="bkPasteBtn">붙여넣은 내용 불러오기</button>
       <button class="btn ghost" id="bkLogout">로그아웃</button>
       <button class="btn ghost" id="ok">닫기</button>
     </div>
@@ -870,10 +873,9 @@ $('btnBackup').onclick = () => {
     toast('백업 파일을 만들었어요');
   };
   $('bkImport').onclick = () => $('bkFile').click();
-  $('bkFile').onchange = async e => {
-    const f = e.target.files[0]; if (!f) return;
+  const importJson = async text => {
     try {
-      const j = JSON.parse(await f.text());
+      const j = JSON.parse(text);
       if (j.app!=='chapel' || !j.semesters || typeof j.semesters!=='object') throw 0;
       const ids = Object.keys(j.semesters);
       if (!ids.length) throw 0;
@@ -888,7 +890,13 @@ $('btnBackup').onclick = () => {
       if (!state.offline) await saveActive(state.active);
       renderAll(); closeSheet();
       toast(`${ids.length}개 학기를 불러왔어요`);
-    } catch (err) { toast('올바른 백업 파일이 아니에요'); }
+    } catch (err) { toast('올바른 백업 내용이 아니에요'); }
+  };
+  $('bkFile').onchange = async e => { const f = e.target.files[0]; if (f) importJson(await f.text()); };
+  $('bkPasteBtn').onclick = () => { const v = $('bkPaste').value.trim(); if (!v) return toast('붙여넣은 내용이 없어요'); importJson(v); };
+  $('bkCopy').onclick = async () => {
+    const out = { app:'chapel', version:1, exportedAt:new Date().toISOString(), active:state.active, semesters:state.semesters };
+    try { await navigator.clipboard.writeText(JSON.stringify(out)); toast('복사했어요'); } catch (e) { toast('복사하지 못했어요. 파일로 내보내 주세요.'); }
   };
   $('bkLogout').onclick = async () => { await sb.auth.signOut(); location.reload(); };
 };
